@@ -182,13 +182,13 @@ jobs:
           pip install dist/pyonig-*.whl
       
       - name: Test import
-        run: python -c "import pyonig; print(f'✓ pyonig {pyonig.__version__} imported successfully')"
+        run: python -c "import pyonig; print(f'pyonig {pyonig.__version__} imported successfully')"
       
       - name: Test basic regex
-        run: python -c "from pyonig import compile; p = compile(b'test'); m = p.search(b'this is a test'); print(f'✓ Regex found: {m.group()}')"
+        run: python -c "from pyonig import compile; p = compile(b'test'); m = p.search(b'this is a test'); print(f'Regex found: {m.group()}')"
       
       - name: Test RegSet
-        run: python -c "from pyonig import compile_regset; rs = compile_regset(r'\\d+', r'[a-z]+'); idx, m = rs.search('hello'); print(f'✓ RegSet matched: {m.group()}')"
+        run: python -c "from pyonig import compile_regset; rs = compile_regset(r'\\d+', r'[a-z]+'); idx, m = rs.search('hello'); print(f'RegSet matched: {m.group()}')"
       
       - name: Test CLI
         run: |
