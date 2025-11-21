@@ -1,4 +1,6 @@
 """Tests for the theme management module."""
+import sys
+
 import pytest
 from pathlib import Path
 
@@ -47,8 +49,12 @@ class TestGetVscodeTheme:
     
     def test_with_vscode_settings(self, monkeypatch, tmp_path):
         """Test reading VS Code settings."""
-        # Create fake settings file
-        settings_dir = tmp_path / ".config" / "Code" / "User"
+        # Create fake settings file in platform-specific location
+        if sys.platform == "darwin":
+            settings_dir = tmp_path / "Library" / "Application Support" / "Code" / "User"
+        else:  # Linux and others
+            settings_dir = tmp_path / ".config" / "Code" / "User"
+        
         settings_dir.mkdir(parents=True)
         settings_file = settings_dir / "settings.json"
         settings_file.write_text('{\n  "workbench.colorTheme": "Monokai"\n}')
@@ -61,7 +67,12 @@ class TestGetVscodeTheme:
     
     def test_vscode_settings_with_comments(self, monkeypatch, tmp_path):
         """Test reading VS Code settings with comments."""
-        settings_dir = tmp_path / ".config" / "Code" / "User"
+        # Create fake settings file in platform-specific location
+        if sys.platform == "darwin":
+            settings_dir = tmp_path / "Library" / "Application Support" / "Code" / "User"
+        else:  # Linux and others
+            settings_dir = tmp_path / ".config" / "Code" / "User"
+        
         settings_dir.mkdir(parents=True)
         settings_file = settings_dir / "settings.json"
         settings_file.write_text('''
@@ -79,7 +90,12 @@ class TestGetVscodeTheme:
     
     def test_vscode_settings_invalid_json(self, monkeypatch, tmp_path):
         """Test handling invalid JSON gracefully."""
-        settings_dir = tmp_path / ".config" / "Code" / "User"
+        # Create fake settings file in platform-specific location
+        if sys.platform == "darwin":
+            settings_dir = tmp_path / "Library" / "Application Support" / "Code" / "User"
+        else:  # Linux and others
+            settings_dir = tmp_path / ".config" / "Code" / "User"
+        
         settings_dir.mkdir(parents=True)
         settings_file = settings_dir / "settings.json"
         settings_file.write_text('{ invalid json }')
