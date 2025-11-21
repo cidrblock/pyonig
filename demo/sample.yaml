@@ -1,0 +1,223 @@
+---
+# Ansible Playbook - Web Application Deployment
+# Deploy a complete web application stack with monitoring
+
+- name: Deploy Web Application Stack
+  hosts: webservers
+  become: true
+  gather_facts: true
+  
+  vars:
+    app_name: webapp
+    app_version: "1.2.3"
+    app_port: 8000
+    app_user: webapp
+    app_dir: "/opt/{{ app_name }}"
+    virtualenv_path: "{{ app_dir }}/venv"
+    nginx_port: 80
+    ssl_cert_path: "/etc/ssl/certs/{{ app_name }}.crt"
+    ssl_key_path: "/etc/ssl/private/{{ app_name }}.key"
+    
+  pre_tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: true
+        cache_valid_time: 3600
+      when: ansible_os_family == "Debian"
+    
+    - name: Ensure required packages are installed
+      package:
+        name:
+          - python3
+          - python3-pip
+          - python3-venv
+          - nginx
+          - git
+          - postgresql
+          - redis-server
+        state: present
+  
+  tasks:
+    - name: Create application user
+      user:
+        name: "{{ app_user }}"
+        system: true
+        shell: /bin/bash
+        home: "{{ app_dir }}"
+        create_home: true
+    
+    - name: Clone application repository
+      git:
+        repo: "https://github.com/example/{{ app_name }}.git"
+        dest: "{{ app_dir }}/src"
+        version: "v{{ app_version }}"
+        force: true
+      become_user: "{{ app_user }}"
+      notify: Restart application
+    
+    - name: Create Python virtual environment
+      command: "python3 -m venv {{ virtualenv_path }}"
+      args:
+        creates: "{{ virtualenv_path }}/bin/activate"
+      become_user: "{{ app_user }}"
+    
+    - name: Install Python dependencies
+      pip:
+        requirements: "{{ app_dir }}/src/requirements.txt"
+        virtualenv: "{{ virtualenv_path }}"
+      become_user: "{{ app_user }}"
+      notify: Restart application
+    
+    - name: Create application configuration
+      template:
+        src: templates/app_config.j2
+        dest: "{{ app_dir }}/config.yaml"
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        mode: '0640'
+      notify: Restart application
+    
+    - name: Configure PostgreSQL database
+      postgresql_db:
+        name: "{{ app_name }}_db"
+        state: present
+      become_user: postgres
+    
+    - name: Create database user
+      postgresql_user:
+        name: "{{ app_user }}"
+        password: "{{ db_password }}"
+        db: "{{ app_name }}_db"
+        priv: ALL
+        state: present
+      become_user: postgres
+    
+    - name: Run database migrations
+      command: "{{ virtualenv_path }}/bin/python manage.py migrate"
+      args:
+        chdir: "{{ app_dir }}/src"
+      become_user: "{{ app_user }}"
+      register: migration_result
+      changed_when: "'No migrations to apply' not in migration_result.stdout"
+    
+    - name: Create systemd service file
+      template:
+        src: templates/webapp.service.j2
+        dest: "/etc/systemd/system/{{ app_name }}.service"
+        mode: '0644'
+      notify:
+        - Reload systemd
+        - Restart application
+    
+    - name: Configure Nginx reverse proxy
+      template:
+        src: templates/nginx_site.j2
+        dest: "/etc/nginx/sites-available/{{ app_name }}"
+        mode: '0644'
+      notify: Reload nginx
+    
+    - name: Enable Nginx site
+      file:
+        src: "/etc/nginx/sites-available/{{ app_name }}"
+        dest: "/etc/nginx/sites-enabled/{{ app_name }}"
+        state: link
+      notify: Reload nginx
+    
+    - name: Install SSL certificates
+      copy:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        mode: "{{ item.mode }}"
+      loop:
+        - { src: "files/ssl/cert.crt", dest: "{{ ssl_cert_path }}", mode: '0644' }
+        - { src: "files/ssl/cert.key", dest: "{{ ssl_key_path }}", mode: '0600' }
+      notify: Reload nginx
+    
+    - name: Configure Redis
+      lineinfile:
+        path: /etc/redis/redis.conf
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+      loop:
+        - { regexp: '^bind', line: 'bind 127.0.0.1' }
+        - { regexp: '^maxmemory', line: 'maxmemory 256mb' }
+        - { regexp: '^maxmemory-policy', line: 'maxmemory-policy allkeys-lru' }
+      notify: Restart redis
+    
+    - name: Configure log rotation
+      copy:
+        dest: "/etc/logrotate.d/{{ app_name }}"
+        content: |
+          {{ app_dir }}/logs/*.log {
+              daily
+              rotate 14
+              compress
+              delaycompress
+              notifempty
+              create 0640 {{ app_user }} {{ app_user }}
+              sharedscripts
+              postrotate
+                  systemctl reload {{ app_name }} > /dev/null 2>&1 || true
+              endscript
+          }
+        mode: '0644'
+    
+    - name: Ensure application is running
+      systemd:
+        name: "{{ app_name }}"
+        state: started
+        enabled: true
+        daemon_reload: true
+    
+    - name: Wait for application to be ready
+      uri:
+        url: "http://localhost:{{ app_port }}/health"
+        status_code: 200
+      register: result
+      until: result.status == 200
+      retries: 30
+      delay: 2
+    
+    - name: Display deployment summary
+      debug:
+        msg:
+          - "Application deployed successfully!"
+          - "Version: {{ app_version }}"
+          - "URL: https://{{ ansible_fqdn }}"
+          - "Status: {{ result.status }}"
+
+  handlers:
+    - name: Reload systemd
+      systemd:
+        daemon_reload: true
+    
+    - name: Restart application
+      systemd:
+        name: "{{ app_name }}"
+        state: restarted
+    
+    - name: Reload nginx
+      systemd:
+        name: nginx
+        state: reloaded
+    
+    - name: Restart redis
+      systemd:
+        name: redis-server
+        state: restarted
+
+  post_tasks:
+    - name: Run smoke tests
+      uri:
+        url: "http://localhost:{{ app_port }}{{ item }}"
+        status_code: 200
+      loop:
+        - /health
+        - /api/v1/status
+        - /metrics
+      register: smoke_tests
+      failed_when: false
+    
+    - name: Report test results
+      debug:
+        msg: "Smoke tests: {{ smoke_tests.results | selectattr('status', 'equalto', 200) | list | length }}/{{ smoke_tests.results | length }} passed"

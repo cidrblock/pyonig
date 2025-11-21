@@ -1,0 +1,44 @@
+2024-11-21 08:15:23.456 [INFO] Application startup initiated
+2024-11-21 08:15:23.502 [INFO] Loading configuration from /etc/app/config.yaml
+2024-11-21 08:15:23.687 [INFO] Database connection pool initialized (min=5, max=20)
+2024-11-21 08:15:23.891 [INFO] Redis cache connection established at redis://localhost:6379
+2024-11-21 08:15:24.123 [INFO] HTTP server listening on 0.0.0.0:8000
+2024-11-21 08:15:24.125 [INFO] Application ready to accept requests
+2024-11-21 08:16:15.234 [INFO] GET /api/v1/users - 200 OK (12ms)
+2024-11-21 08:16:15.456 [INFO] GET /api/v1/users/123 - 200 OK (8ms)
+2024-11-21 08:16:18.789 [INFO] POST /api/v1/users - 201 Created (45ms)
+2024-11-21 08:17:23.012 [WARN] Rate limit approaching for IP 192.168.1.100 (85/100 requests)
+2024-11-21 08:17:45.234 [INFO] GET /api/v1/products - 200 OK (156ms)
+2024-11-21 08:18:12.456 [ERROR] GET /api/v1/orders/999 - 404 Not Found (5ms)
+2024-11-21 08:18:12.457 [ERROR] Order not found: order_id=999
+2024-11-21 08:18:30.678 [WARN] Slow query detected: SELECT * FROM orders WHERE status='pending' (2341ms)
+2024-11-21 08:19:01.234 [INFO] Cache hit rate: 87.3% (last 1000 requests)
+2024-11-21 08:19:15.567 [INFO] POST /api/v1/auth/login - 200 OK (234ms)
+2024-11-21 08:19:15.568 [INFO] User authenticated: user_id=456, username=john.doe
+2024-11-21 08:20:34.890 [ERROR] POST /api/v1/payments - 500 Internal Server Error (123ms)
+2024-11-21 08:20:34.891 [ERROR] Payment processing failed: connection timeout to payment gateway
+2024-11-21 08:20:34.892 [ERROR] Traceback:
+  File "app/services/payment.py", line 45, in process_payment
+    response = gateway.charge(amount, token)
+  File "lib/payment_gateway.py", line 89, in charge
+    return self._make_request('POST', '/charge', data)
+  TimeoutError: Request timeout after 30 seconds
+2024-11-21 08:20:35.123 [WARN] Retrying payment processing (attempt 1/3)
+2024-11-21 08:21:05.456 [ERROR] Payment retry failed: connection timeout to payment gateway
+2024-11-21 08:21:05.457 [WARN] Retrying payment processing (attempt 2/3)
+2024-11-21 08:21:35.789 [INFO] Payment processed successfully on retry: transaction_id=TXN-2024-11-21-001
+2024-11-21 08:22:00.012 [INFO] Background job started: daily_report_generation
+2024-11-21 08:22:15.345 [INFO] Processing 1,234 records for daily report
+2024-11-21 08:23:45.678 [INFO] Daily report generated successfully: report_id=RPT-2024-11-21
+2024-11-21 08:23:45.679 [INFO] Report sent to 45 recipients
+2024-11-21 08:24:00.123 [WARN] Memory usage high: 1.8GB / 2.0GB (90%)
+2024-11-21 08:24:00.124 [INFO] Triggering garbage collection
+2024-11-21 08:24:00.567 [INFO] Memory usage after GC: 1.2GB / 2.0GB (60%)
+2024-11-21 08:25:30.890 [INFO] Scheduled task completed: cleanup_expired_sessions (removed 234 sessions)
+2024-11-21 08:26:12.234 [INFO] WebSocket connection opened: connection_id=ws-1234, user_id=789
+2024-11-21 08:26:15.456 [INFO] WebSocket message received: {"type": "subscribe", "channel": "notifications"}
+2024-11-21 08:26:15.457 [INFO] User subscribed to channel: user_id=789, channel=notifications
+2024-11-21 08:27:45.678 [WARN] API key approaching expiration: key_id=api-key-123 (expires in 7 days)
+2024-11-21 08:28:00.012 [INFO] Health check passed: all systems operational
+2024-11-21 08:28:00.013 [INFO] Services: database=up, cache=up, queue=up, storage=up
+

@@ -1,0 +1,73 @@
+# PyProject Configuration
+[build-system]
+requires = ["setuptools>=45", "wheel", "setuptools-scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "awesome-project"
+version = "1.0.0"
+description = "A fantastic Python project with modern tooling"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "John Doe", email = "john@example.com"},
+    {name = "Jane Smith", email = "jane@example.com"}
+]
+maintainers = [
+    {name = "John Doe", email = "john@example.com"}
+]
+keywords = ["async", "web", "api", "framework"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    "requests>=2.28.0",
+    "pydantic>=2.0.0",
+    "fastapi>=0.100.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+]
+docs = [
+    "mkdocs>=1.5.0",
+    "mkdocs-material>=9.0.0",
+]
+
+[project.scripts]
+awesome = "awesome.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/example/awesome-project"
+Documentation = "https://awesome-project.readthedocs.io"
+Repository = "https://github.com/example/awesome-project"
+Changelog = "https://github.com/example/awesome-project/blob/main/CHANGELOG.md"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-v --cov=awesome --cov-report=term-missing"
+
+[tool.black]
+line-length = 100
+target-version = ['py310', 'py311', 'py312']
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+

@@ -1,0 +1,139 @@
+---
+name: 🧪 Tests
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FORCE_COLOR: "1"
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
+jobs:
+  test:
+    name: Test Python ${{ matrix.python-version }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-13, macos-14]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        exclude:
+          # macOS 14 (M1) doesn't support Python 3.10 (EOL for ARM64)
+          - os: macos-14
+            python-version: "3.10"
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          pip install tox tox-gh-actions
+      
+      - name: Run tests with tox
+        run: tox -e py${{ matrix.python-version }}
+        env:
+          PLATFORM: ${{ matrix.os }}
+      
+      - name: Upload coverage reports
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.13'
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  lint:
+    name: Lint and code quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      
+      - name: Install tox
+        run: pip install tox
+      
+      - name: Run linters
+        run: tox -e lint || echo "Linting environment not configured yet"
+        continue-on-error: true
+
+  test-cli:
+    name: Test CLI tool
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      
+      - name: Install package
+        run: pip install -e .
+      
+      - name: Test CLI help
+        run: pyonig --help
+      
+      - name: Test CLI list languages
+        run: pyonig --list-languages
+      
+      - name: Test CLI with JSON file
+        run: |
+          echo '{"test": "value"}' > test.json
+          pyonig test.json --colors 256
+      
+      - name: Test CLI with stdin
+        run: |
+          echo '{"test": "value"}' | pyonig --language json
+
+  status:
+    name: ✅ All tests passed
+    if: always()
+    needs: [test, lint, test-cli]
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    
+    steps:
+      - name: Decide whether all jobs succeeded
+        uses: re-actors/alls-green@release/v1
+        with:
+          allowed-failures: lint
+          jobs: ${{ toJSON(needs) }}
+

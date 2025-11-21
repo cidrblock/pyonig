@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyonig"
+version = "0.1.0"
+description = "Self-contained oniguruma regex engine with TextMate grammar support for Python"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "Bradley A. Thornton", email = "bthornto@redhat.com"}
+]
+keywords = ["regex", "oniguruma", "textmate", "syntax", "highlighting"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Text Processing",
+]
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+]
+
+[project.scripts]
+pyonig = "pyonig.cli:main"
+po = "pyonig.cli:main"
+
+[tool.setuptools]
+packages = ["pyonig", "pyonig.tm_tokenize"]
+package-dir = {"" = "src"}
+
+[tool.setuptools.package-data]
+pyonig = ["grammars/*.json", "themes/*.json"]

@@ -1,0 +1,280 @@
+---
+name: 🚀 Release to PyPI
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Publish target'
+        required: true
+        type: choice
+        options:
+          - testpypi
+          - pypi
+        default: 'testpypi'
+
+permissions:
+  contents: write  # For creating GitHub releases
+  id-token: write  # For PyPI trusted publishing
+
+env:
+  FORCE_COLOR: "1"
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
+jobs:
+  build-all:
+    name: Build all distributions
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    
+    outputs:
+      version: ${{ steps.get-version.outputs.version }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      
+      - name: Get version from tag
+        id: get-version
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+          else
+            VERSION="0.0.0.dev$(date +%Y%m%d%H%M%S)"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION"
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      
+      - name: Install tox
+        run: pip install tox
+      
+      - name: Build sdist
+        run: tox -e build-sdist
+      
+      - name: Upload sdist
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-sdist
+          path: dist/*.tar.gz
+
+  build-wheels-linux:
+    name: Build Linux wheels
+    needs: [build-all]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    strategy:
+      matrix:
+        arch: [x86_64, aarch64]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      
+      - name: Install tox
+        run: pip install tox
+      
+      - name: Set up QEMU for ARM64
+        if: matrix.arch == 'aarch64'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+      
+      - name: Build wheels
+        run: |
+          if [ "${{ matrix.arch }}" = "x86_64" ]; then
+            tox -e build-wheels-linux-x86_64
+          else
+            tox -e build-wheels-linux-aarch64
+          fi
+      
+      - name: Upload wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-linux-${{ matrix.arch }}
+          path: dist/*.whl
+
+  build-wheels-macos:
+    name: Build macOS wheels
+    needs: [build-all]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    
+    strategy:
+      matrix:
+        os: [macos-13, macos-14]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      
+      - name: Set up Python versions
+        uses: actions/setup-python@v5
+        with:
+          python-version: |
+            3.10
+            3.11
+            3.12
+            3.13
+      
+      - name: Install tox and delocate
+        run: pip install tox delocate
+      
+      - name: Build wheels
+        run: tox -e build-wheels-macos
+      
+      - name: Upload wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-macos-${{ matrix.os }}
+          path: dist/*.whl
+
+  publish-testpypi:
+    name: Publish to TestPyPI
+    needs: [build-wheels-linux, build-wheels-macos]
+    if: |
+      github.event_name == 'workflow_dispatch' && 
+      github.event.inputs.target == 'testpypi'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/project/pyonig/
+    
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: dist-*
+          path: dist
+          merge-multiple: true
+      
+      - name: List distributions
+        run: ls -lh dist/
+      
+      - name: Publish to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          skip-existing: true
+          verbose: true
+
+  publish-pypi:
+    name: Publish to PyPI
+    needs: [build-wheels-linux, build-wheels-macos]
+    if: |
+      github.event_name == 'push' && 
+      startsWith(github.ref, 'refs/tags/v') ||
+      (github.event_name == 'workflow_dispatch' && 
+       github.event.inputs.target == 'pypi')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    environment:
+      name: pypi
+      url: https://pypi.org/project/pyonig/
+    
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: dist-*
+          path: dist
+          merge-multiple: true
+      
+      - name: List distributions
+        run: ls -lh dist/
+      
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          verbose: true
+
+  create-github-release:
+    name: Create GitHub Release
+    needs: [build-all, publish-pypi]
+    if: |
+      github.event_name == 'push' && 
+      startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: dist-*
+          path: dist-all
+      
+      - name: Create release notes
+        id: release-notes
+        run: |
+          VERSION="${{ needs.build-all.outputs.version }}"
+          cat > release-notes.md << EOF
+          # pyonig v${VERSION}
+          
+          ## Installation
+          
+          \`\`\`bash
+          pip install pyonig
+          \`\`\`
+          
+          ## Platform Support
+          
+          This release includes wheels for:
+          - **Linux**: x86_64, aarch64 (Python 3.10-3.13)
+          - **macOS**: x86_64, arm64 (Python 3.10-3.13)
+          
+          ## What's New
+          
+          See the commit history for details.
+          
+          ## Links
+          
+          - 📦 [PyPI](https://pypi.org/project/pyonig/${VERSION}/)
+          - 📖 [Documentation](https://github.com/${{ github.repository }})
+          - 🐛 [Issue Tracker](https://github.com/${{ github.repository }}/issues)
+          EOF
+          
+          echo "Created release notes for v${VERSION}"
+      
+      - name: Create GitHub Release
+        uses: ncipollo/release-action@v1
+        with:
+          name: v${{ needs.build-all.outputs.version }}
+          tag: v${{ needs.build-all.outputs.version }}
+          bodyFile: release-notes.md
+          artifacts: "dist-all/**/*.whl,dist-all/**/*.tar.gz"
+          artifactContentType: application/octet-stream
+          draft: false
+          prerelease: ${{ contains(needs.build-all.outputs.version, 'a') || contains(needs.build-all.outputs.version, 'b') || contains(needs.build-all.outputs.version, 'rc') }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
