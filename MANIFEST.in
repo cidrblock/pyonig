@@ -1,0 +1,25 @@
+# Include all Oniguruma source files needed for building
+recursive-include deps/oniguruma/src *.c *.h
+recursive-include deps/oniguruma/m4 *
+include deps/oniguruma/configure.ac
+include deps/oniguruma/Makefile.am
+include deps/oniguruma/src/Makefile.am
+include deps/oniguruma/test/Makefile.am
+include deps/oniguruma/sample/Makefile.am
+include deps/oniguruma/COPYING
+include deps/oniguruma/README.md
+
+# Include grammars and themes
+recursive-include src/pyonig/grammars *.json
+recursive-include src/pyonig/themes *.json
+
+# Include documentation
+include README.md
+include LICENSE
+
+# Include test files
+recursive-include tests *.py
+
+# Include build scripts
+recursive-include build-scripts *.sh
+
