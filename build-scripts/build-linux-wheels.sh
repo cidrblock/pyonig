@@ -19,6 +19,15 @@ if [ ! -f /io/deps/oniguruma/src/oniguruma.h ]; then
     exit 1
 fi
 
+# Configure oniguruma (required for compilation)
+echo "=================================="
+echo "Configuring Oniguruma"
+echo "=================================="
+cd /io/deps/oniguruma
+autoreconf -vfi
+./configure --disable-shared --enable-static
+cd /io
+
 # Clean previous builds
 rm -rf /io/build /io/src/pyonig.egg-info /io/wheelhouse
 

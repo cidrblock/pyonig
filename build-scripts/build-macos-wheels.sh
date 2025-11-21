@@ -14,6 +14,15 @@ if [ ! -f deps/oniguruma/src/oniguruma.h ]; then
     git submodule update --init --recursive
 fi
 
+# Configure oniguruma (required for compilation)
+echo "=================================="
+echo "Configuring Oniguruma"
+echo "=================================="
+cd deps/oniguruma
+autoreconf -vfi
+./configure --disable-shared --enable-static
+cd ../..
+
 # Clean previous builds
 rm -rf build dist/*.whl src/pyonig.egg-info wheelhouse
 
