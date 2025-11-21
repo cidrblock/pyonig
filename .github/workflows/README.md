@@ -99,8 +99,8 @@ git push origin v0.1.0
 |----------|-------------|---------|--------------|--------|
 | Linux | x86_64 | ubuntu-latest | Docker + manylinux2014 | ✅ |
 | Linux | aarch64 | ubuntu-latest | Docker + manylinux2014 + QEMU | ✅ |
-| macOS | x86_64 | macos-13 | Native | ✅ |
-| macOS | arm64 | macos-14 | Native | ✅ |
+| macOS | x86_64 | macos-15-intel | Native | ✅ |
+| macOS | arm64 | macos-15 | Native | ✅ |
 | Windows | x86_64 | - | - | ⚠️ Future |
 
 ## Key Features
@@ -130,8 +130,8 @@ These workflows call tox, which calls our build scripts. This means:
 
 We build on **native runners** for each platform:
 - **ubuntu-latest**: For Linux x86_64 and aarch64 (via QEMU)
-- **macos-13**: For macOS x86_64 (Intel)
-- **macos-14**: For macOS arm64 (Apple Silicon)
+- **macos-15-intel**: For macOS x86_64 (Intel) on macOS 15 Sequoia
+- **macos-15**: For macOS arm64 (Apple Silicon) on macOS 15 Sequoia
 
 ### 4. **Trusted Publishing**
 
