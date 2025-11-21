@@ -1,7 +1,10 @@
 """Setup script for pyonig with C extension."""
 import glob
 import os
+import subprocess
+import sys
 from setuptools import Extension, setup
+from setuptools.command.build_ext import build_ext
 
 # Get all oniguruma C source files
 # Note: unicode_*_data.c files are #included by unicode.c, not compiled separately
@@ -27,6 +30,46 @@ onig_sources = [
     ]
 ]
 
+
+class BuildExtWithConfigure(build_ext):
+    """Custom build_ext that runs autoreconf and configure for oniguruma."""
+
+    def run(self):
+        """Run autoreconf and configure before building the extension."""
+        onig_dir = "deps/oniguruma"
+        config_h = os.path.join(onig_dir, "src", "config.h")
+        
+        # Only configure if config.h doesn't exist
+        if not os.path.exists(config_h):
+            print("Configuring oniguruma...")
+            try:
+                # Run autoreconf
+                subprocess.check_call(
+                    ["autoreconf", "-vfi"],
+                    cwd=onig_dir,
+                )
+                # Run configure
+                subprocess.check_call(
+                    ["./configure", "--disable-shared", "--enable-static"],
+                    cwd=onig_dir,
+                )
+                print("Oniguruma configured successfully")
+            except subprocess.CalledProcessError as e:
+                print(f"ERROR: Failed to configure oniguruma: {e}", file=sys.stderr)
+                print("Please run manually:", file=sys.stderr)
+                print(f"  cd {onig_dir} && autoreconf -vfi && ./configure --disable-shared --enable-static", file=sys.stderr)
+                sys.exit(1)
+            except FileNotFoundError as e:
+                print(f"ERROR: Required tool not found: {e}", file=sys.stderr)
+                print("Please install autotools: autoconf, automake, libtool", file=sys.stderr)
+                sys.exit(1)
+        else:
+            print("Oniguruma already configured, skipping autoreconf/configure")
+        
+        # Now run the normal build_ext
+        super().run()
+
+
 # Our extension module
 extension = Extension(
     "pyonig._pyonig",
@@ -38,5 +81,6 @@ extension = Extension(
 
 setup(
     ext_modules=[extension],
+    cmdclass={"build_ext": BuildExtWithConfigure},
 )
 
