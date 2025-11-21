@@ -3,16 +3,14 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-import pytest
 
 from pyonig.colorize import (
     Colorize,
     ansi_to_curses,
     rgb_to_ansi,
 )
-from pyonig.curses_defs import CursesLinePart
 from pyonig.ui_constants import Color
 
 
@@ -171,7 +169,7 @@ class TestAnsiToCurses:
         """Test ANSI sequence that's not a color."""
         # Some other ANSI sequence
         line = "\x1b[HCursor\x1b[0m"
-        result = ansi_to_curses(line)
+        ansi_to_curses(line)
         # Should handle gracefully
 
 
@@ -243,7 +241,7 @@ class TestColorizeExceptionHandling:
         
         with patch("pyonig.colorize.tokenize", side_effect=tokenize_side_effect):
             with caplog.at_level(logging.CRITICAL):
-                result = colorizer.render("line1\nline2\nline3", "source.json")
+                colorizer.render("line1\nline2\nline3", "source.json")
                 
                 # Should have caught error on line 2
                 assert any("unexpected error" in record.message.lower() for record in caplog.records)
@@ -409,7 +407,6 @@ class TestUtilityFunctions:
     def test_markdown_processing(self):
         """Test markdown processing functions."""
         from pyonig.colorize import columns_and_colors, ColorSchema
-        from pyonig.curses_defs import SimpleLinePart
         import json
         
         # Create a simple markdown structure

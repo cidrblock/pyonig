@@ -86,8 +86,7 @@ jobs:
         run: pip install tox
       
       - name: Run linters
-        run: tox -e lint || echo "Linting environment not configured yet"
-        continue-on-error: true
+        run: tox -e lint
 
   test-cli:
     name: Test CLI tool
@@ -140,6 +139,5 @@ jobs:
       - name: Decide whether all jobs succeeded
         uses: re-actors/alls-green@release/v1
         with:
-          allowed-failures: lint
           jobs: ${{ toJSON(needs) }}
 

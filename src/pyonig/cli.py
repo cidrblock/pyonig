@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import sys
-from pathlib import Path
 
 import pyonig
 from pyonig.api import highlight, highlight_file
@@ -131,9 +130,9 @@ Supported languages:
                 else:
                     print(f"  • {theme_name}")
         
-        print(f"\nUsage: pyonig --theme <name> <file>")
-        print(f"Example: pyonig --theme monokai file.json")
-        print(f"         pyonig --theme solarized-dark config.yaml")
+        print("\nUsage: pyonig --theme <name> <file>")
+        print("Example: pyonig --theme monokai file.json")
+        print("         pyonig --theme solarized-dark config.yaml")
         return 0
     
     # Highlight file or stdin

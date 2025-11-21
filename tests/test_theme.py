@@ -1,9 +1,6 @@
 """Tests for the theme management module."""
-import os
 import pytest
 from pathlib import Path
-import tempfile
-import json
 
 from pyonig.theme import (
     THEME_ALIASES,
